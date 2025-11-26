@@ -1,0 +1,14 @@
+
+
+<agent_rules>
+- keep files together.
+- Go for minimal implementation, KISS
+- Do not generate .md files unless requested.
+- Always start with a 3–5 step plan and list the files you expect to touch.
+- Before adding new code, scan the repo for similar patterns and reuse them.
+- Keep changes small and focused; show final output as unified diffs or clearly labeled code blocks.
+- Use `gofmt`/standard Go style and avoid adding heavy new dependencies without a clear reason.
+- For any non-trivial change, add or update tests and (when possible) run `go test ./...` and show the command.
+- If something is unclear, briefly say what you’re unsure about and propose a safe default instead of inventing behavior.
+- Keep explanations concise (aim for less than 150 words) unless explicitly asked for more detail.
+</agent_rules>
