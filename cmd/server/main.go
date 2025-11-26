@@ -67,6 +67,8 @@ func main() {
 	var configPath string
 	var password string
 	var testPhase1 bool
+	var testPeriodic bool
+	var testPhase2 bool
 
 	// Define command-line flags for different operation modes.
 	flag.BoolVar(&login, "login", false, "Login Google Account")
@@ -82,6 +84,8 @@ func main() {
 	flag.StringVar(&vertexImport, "vertex-import", "", "Import Vertex service account key JSON file")
 	flag.StringVar(&password, "password", "", "")
 	flag.BoolVar(&testPhase1, "test-phase1", false, "Run Phase 1 test (JSON store validation)")
+	flag.BoolVar(&testPeriodic, "test-periodic", false, "Run periodic flush test (takes 31 seconds)")
+	flag.BoolVar(&testPhase2, "test-phase2", false, "Run Phase 2 test (persistence integration)")
 
 	flag.CommandLine.Usage = func() {
 		out := flag.CommandLine.Output()
@@ -401,10 +405,38 @@ func main() {
 	// Set the log level based on the configuration.
 	util.SetLogLevel(cfg)
 
+	// Resolve auth directory FIRST
 	if resolvedAuthDir, errResolveAuthDir := util.ResolveAuthDir(cfg.AuthDir); errResolveAuthDir != nil {
 		log.Fatalf("failed to resolve auth directory: %v", errResolveAuthDir)
 	} else {
 		cfg.AuthDir = resolvedAuthDir
+	}
+
+	// Initialize usage persistence if statistics are enabled (AFTER auth-dir is resolved)
+	var usageStore *usage.JSONStore
+	if cfg.UsageStatisticsEnabled {
+		// Default to auth-dir/usage.json
+		usageFilePath := filepath.Join(cfg.AuthDir, "usage.json")
+		usageStore = usage.NewJSONStore(usageFilePath)
+		usage.SetJSONStore(usageStore)
+		
+		// Ensure store is properly closed on exit
+		defer func() {
+			if usageStore != nil {
+				if err := usageStore.Close(); err != nil {
+					log.Warnf("failed to close usage store: %v", err)
+				} else {
+					log.Debug("usage store closed successfully")
+				}
+			}
+		}()
+		
+		// Load historical events on startup
+		if events, err := usageStore.Load(); err != nil {
+			log.Warnf("failed to load historical usage events: %v", err)
+		} else if len(events) > 0 {
+			log.Infof("loaded %d historical usage events from %s", len(events), usageFilePath)
+		}
 	}
 	managementasset.SetCurrentConfig(cfg)
 
@@ -433,6 +465,18 @@ func main() {
 		// Run Phase 1 test: JSON store validation
 		if err := usage.TestPhase1JSONStore(); err != nil {
 			log.Fatalf("Phase 1 test failed: %v", err)
+		}
+		return
+	} else if testPeriodic {
+		// Run periodic flush test
+		if err := usage.TestPeriodicFlush(); err != nil {
+			log.Fatalf("Periodic flush test failed: %v", err)
+		}
+		return
+	} else if testPhase2 {
+		// Run Phase 2 test: persistence integration
+		if err := usage.TestPhase2Persistence(); err != nil {
+			log.Fatalf("Phase 2 test failed: %v", err)
 		}
 		return
 	} else if vertexImport != "" {

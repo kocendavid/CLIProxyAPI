@@ -5,7 +5,10 @@ package usage
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,6 +18,8 @@ import (
 )
 
 var statisticsEnabled atomic.Bool
+var jsonStore *JSONStore
+var jsonStoreMu sync.RWMutex
 
 func init() {
 	statisticsEnabled.Store(true)
@@ -54,6 +59,25 @@ func SetStatisticsEnabled(enabled bool) { statisticsEnabled.Store(enabled) }
 
 // StatisticsEnabled reports the current recording state.
 func StatisticsEnabled() bool { return statisticsEnabled.Load() }
+
+// SetJSONStore sets the global JSON store for usage persistence.
+// This should be called once during server initialization.
+//
+// Parameters:
+//   - store: The JSON store instance to use for persistence
+func SetJSONStore(store *JSONStore) {
+	jsonStoreMu.Lock()
+	defer jsonStoreMu.Unlock()
+	jsonStore = store
+}
+
+// GetJSONStore returns the current JSON store instance.
+// Returns nil if no store has been configured.
+func GetJSONStore() *JSONStore {
+	jsonStoreMu.RLock()
+	defer jsonStoreMu.RUnlock()
+	return jsonStore
+}
 
 // RequestStatistics maintains aggregated request metrics in memory.
 type RequestStatistics struct {
@@ -207,6 +231,9 @@ func (s *RequestStatistics) Record(ctx context.Context, record coreusage.Record)
 	s.requestsByHour[hourKey]++
 	s.tokensByDay[dayKey] += totalTokens
 	s.tokensByHour[hourKey] += totalTokens
+
+	// Persist to JSON store if configured (non-blocking)
+	persistToJSONStore(timestamp, modelName, detail, statsKey, success)
 }
 
 func (s *RequestStatistics) updateAPIStats(stats *apiStats, model string, detail RequestDetail) {
@@ -220,6 +247,56 @@ func (s *RequestStatistics) updateAPIStats(stats *apiStats, model string, detail
 	modelStatsValue.TotalRequests++
 	modelStatsValue.TotalTokens += detail.Tokens.TotalTokens
 	modelStatsValue.Details = append(modelStatsValue.Details, detail)
+}
+
+// persistToJSONStore writes a usage event to the JSON store if configured.
+// This function runs asynchronously to avoid blocking the request processing.
+func persistToJSONStore(timestamp time.Time, model string, tokens TokenStats, apiKeyHash string, success bool) {
+	// Quick check without lock
+	jsonStoreMu.RLock()
+	store := jsonStore
+	jsonStoreMu.RUnlock()
+
+	if store == nil {
+		return
+	}
+
+	// Build the usage event
+	event := UsageEvent{
+		Timestamp:        timestamp,
+		Model:            model,
+		PromptTokens:     tokens.InputTokens,
+		CompletionTokens: tokens.OutputTokens,
+		TotalTokens:      tokens.TotalTokens,
+		Status:           statusFromSuccess(success),
+		APIKeyHash:       hashString(apiKeyHash),
+	}
+
+	// Write asynchronously to avoid blocking
+	go func() {
+		if err := store.Write(event); err != nil {
+			// Log error but don't fail the request
+			fmt.Fprintf(os.Stderr, "warning: failed to persist usage event: %v\n", err)
+		}
+	}()
+}
+
+// hashString creates a SHA256 hash of the input string.
+// Returns empty string if input is empty.
+func hashString(s string) string {
+	if s == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
+}
+
+// statusFromSuccess converts a success boolean to an HTTP-like status code.
+func statusFromSuccess(success bool) int {
+	if success {
+		return 200
+	}
+	return 500
 }
 
 // Snapshot returns a copy of the aggregated metrics for external consumption.

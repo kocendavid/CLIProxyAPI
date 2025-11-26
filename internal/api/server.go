@@ -557,6 +557,10 @@ func (s *Server) registerManagementRoutes() {
 		mgmt.GET("/iflow-auth-url", s.mgmt.RequestIFlowToken)
 		mgmt.POST("/iflow-auth-url", s.mgmt.RequestIFlowCookieToken)
 		mgmt.GET("/get-auth-status", s.mgmt.GetAuthStatus)
+
+		// QuantumSpring metrics endpoints
+		mgmt.GET("/qs/health", s.mgmt.GetQSHealth)
+		mgmt.GET("/qs/metrics", s.mgmt.GetQSMetrics)
 	}
 }
 

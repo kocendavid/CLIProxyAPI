@@ -36,6 +36,7 @@ type Handler struct {
 	authManager         *coreauth.Manager
 	usageStats          *usage.RequestStatistics
 	tokenStore          coreauth.Store
+	jsonStore           *usage.JSONStore
 	localPassword       string
 	allowRemoteOverride bool
 	envSecret           string
@@ -83,6 +84,9 @@ func (h *Handler) SetLogDirectory(dir string) {
 	}
 	h.logDir = dir
 }
+
+// SetJSONStore updates the JSON store reference for metrics endpoints.
+func (h *Handler) SetJSONStore(store *usage.JSONStore) { h.jsonStore = store }
 
 // Middleware enforces access control for management endpoints.
 // All requests (local and remote) require a valid management key.
