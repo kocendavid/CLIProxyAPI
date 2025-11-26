@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usage Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #e0e5ec;
+            color: #4a5568;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: #e0e5ec;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 9px 9px 16px rgba(163, 177, 198, 0.6),
+                        -9px -9px 16px rgba(255, 255, 255, 0.5);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #2563eb;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(163, 177, 198, 0.3),
+                        -2px -2px 4px rgba(255, 255, 255, 0.5);
+        }
+        
+        .subtitle {
+            color: #718096;
+            font-size: 1.1em;
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .kpi-card {
+            background: #e0e5ec;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 9px 9px 16px rgba(163, 177, 198, 0.6),
+                        -9px -9px 16px rgba(255, 255, 255, 0.5);
+            text-align: center;
+        }
+        
+        .kpi-label {
+            font-size: 0.9em;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .kpi-value {
+            font-size: 3em;
+            font-weight: bold;
+            color: #2563eb;
+            text-shadow: 2px 2px 4px rgba(163, 177, 198, 0.3),
+                        -1px -1px 2px rgba(255, 255, 255, 0.8);
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: #e0e5ec;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 9px 9px 16px rgba(163, 177, 198, 0.6),
+                        -9px -9px 16px rgba(255, 255, 255, 0.5);
+        }
+        
+        .chart-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #4a5568;
+            font-weight: 600;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            background: #e0e5ec;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.4),
+                        inset -4px -4px 8px rgba(255, 255, 255, 0.4);
+        }
+        
+        .filters {
+            background: #e0e5ec;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 9px 9px 16px rgba(163, 177, 198, 0.6),
+                        -9px -9px 16px rgba(255, 255, 255, 0.5);
+            margin-bottom: 30px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            font-size: 0.9em;
+            color: #718096;
+            font-weight: 600;
+        }
+        
+        .filter-group input,
+        .filter-group select {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1em;
+            background: #e0e5ec;
+            color: #4a5568;
+            font-weight: 600;
+            box-shadow: 6px 6px 12px rgba(163, 177, 198, 0.6),
+                        -6px -6px 12px rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            box-shadow: 4px 4px 8px rgba(163, 177, 198, 0.6),
+                        -4px -4px 8px rgba(255, 255, 255, 0.5);
+        }
+        
+        .filter-group input:active,
+        .filter-group select:active {
+            box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.6),
+                        inset -4px -4px 8px rgba(255, 255, 255, 0.5);
+        }
+        
+        button {
+            padding: 12px 30px;
+            background: #e0e5ec;
+            color: #2563eb;
+            border: none;
+            border-radius: 12px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 6px 6px 12px rgba(163, 177, 198, 0.6),
+                        -6px -6px 12px rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+            align-self: flex-end;
+        }
+        
+        button:hover {
+            box-shadow: 4px 4px 8px rgba(163, 177, 198, 0.6),
+                        -4px -4px 8px rgba(255, 255, 255, 0.5);
+        }
+        
+        button:active {
+            box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.6),
+                        inset -4px -4px 8px rgba(255, 255, 255, 0.5);
+        }
+        
+        .status {
+            text-align: center;
+            color: #2563eb;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-top: 20px;
+            background: #e0e5ec;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 6px 6px 12px rgba(163, 177, 198, 0.6),
+                        -6px -6px 12px rgba(255, 255, 255, 0.5);
+        }
+        
+        .error {
+            background: #e0e5ec;
+            color: #e53e3e;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+            box-shadow: inset 4px 4px 8px rgba(229, 62, 62, 0.2),
+                        inset -4px -4px 8px rgba(255, 255, 255, 0.5);
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .kpi-value {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Usage Metrics Dashboard</h1>
+            <p class="subtitle">Real-time monitoring of API usage and token consumption</p>
+        </header>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <label for="timeRange">Time Range</label>
+                <select id="timeRange">
+                    <option value="1">Last Hour</option>
+                    <option value="6">Last 6 Hours</option>
+                    <option value="24" selected>Last 24 Hours</option>
+                    <option value="168">Last 7 Days</option>
+                    <option value="720">Last 30 Days</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+            </div>
+            
+            <div class="filter-group" id="customFromGroup" style="display: none;">
+                <label for="customFrom">From</label>
+                <input type="datetime-local" id="customFrom">
+            </div>
+            
+            <div class="filter-group" id="customToGroup" style="display: none;">
+                <label for="customTo">To</label>
+                <input type="datetime-local" id="customTo">
+            </div>
+            
+            <button onclick="loadMetrics()">Refresh</button>
+        </div>
+        
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Total Requests</div>
+                <div class="kpi-value" id="totalRequests">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total Tokens</div>
+                <div class="kpi-value" id="totalTokens">-</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Avg Tokens/Request</div>
+                <div class="kpi-value" id="avgTokens">-</div>
+            </div>
+        </div>
+        
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h2 class="chart-title">Requests Over Time</h2>
+                <div class="chart-container">
+                    <canvas id="timeseriesChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <h2 class="chart-title">Usage by Model</h2>
+                <div class="chart-container">
+                    <canvas id="modelChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status" id="status">Last updated: Never</div>
+    </div>
+    
+    <script>
+        let timeseriesChart = null;
+        let modelChart = null;
+        let autoRefreshInterval = null;
+        
+        // Get management key from URL or prompt
+        function getManagementKey() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('key') || prompt('Enter management key:');
+        }
+        
+        // Format number with commas
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Build API URL with filters
+        function buildMetricsURL() {
+            const timeRange = document.getElementById('timeRange').value;
+            const baseURL = window.location.pathname.replace('/ui', '');
+            const params = new URLSearchParams();
+            
+            if (timeRange === 'custom') {
+                const from = document.getElementById('customFrom').value;
+                const to = document.getElementById('customTo').value;
+                if (from) params.append('from', new Date(from).toISOString());
+                if (to) params.append('to', new Date(to).toISOString());
+            } else {
+                const hours = parseInt(timeRange);
+                const to = new Date();
+                const from = new Date(to.getTime() - hours * 60 * 60 * 1000);
+                params.append('from', from.toISOString());
+                params.append('to', to.toISOString());
+            }
+            
+            return baseURL + (params.toString() ? '?' + params.toString() : '');
+        }
+        
+        // Load metrics from API
+        async function loadMetrics() {
+            const key = getManagementKey();
+            if (!key) return;
+            
+            try {
+                const url = buildMetricsURL();
+                const response = await fetch(url, {
+                    headers: {
+                        'X-Management-Key': key
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to load metrics');
+                }
+                
+                const data = await response.json();
+                updateDashboard(data);
+                
+                document.getElementById('status').textContent = 
+                    'Last updated: ' + new Date().toLocaleTimeString();
+                    
+            } catch (error) {
+                console.error('Error loading metrics:', error);
+                showError(error.message);
+            }
+        }
+        
+        // Update dashboard with new data
+        function updateDashboard(data) {
+            // Update KPIs
+            document.getElementById('totalRequests').textContent = 
+                formatNumber(data.totals.requests);
+            document.getElementById('totalTokens').textContent = 
+                formatNumber(data.totals.tokens);
+            document.getElementById('avgTokens').textContent = 
+                data.totals.requests > 0 
+                    ? formatNumber(Math.round(data.totals.tokens / data.totals.requests))
+                    : '0';
+            
+            // Update timeseries chart
+            updateTimeseriesChart(data.timeseries);
+            
+            // Update model chart
+            updateModelChart(data.by_model);
+        }
+        
+        // Update timeseries chart
+        function updateTimeseriesChart(timeseries) {
+            const ctx = document.getElementById('timeseriesChart');
+            
+            const labels = timeseries.map(t => {
+                const date = new Date(t.bucket_start);
+                return date.toLocaleString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            });
+            
+            const requestData = timeseries.map(t => t.requests);
+            const tokenData = timeseries.map(t => t.tokens / 1000); // Show in thousands
+            
+            if (timeseriesChart) {
+                timeseriesChart.data.labels = labels;
+                timeseriesChart.data.datasets[0].data = requestData;
+                timeseriesChart.data.datasets[1].data = tokenData;
+                timeseriesChart.update();
+            } else {
+                timeseriesChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Requests',
+                                data: requestData,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Tokens (K)',
+                                data: tokenData,
+                                borderColor: '#764ba2',
+                                backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Requests'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Tokens (K)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Update model chart
+        function updateModelChart(byModel) {
+            const ctx = document.getElementById('modelChart');
+            
+            const labels = byModel.map(m => m.model);
+            const tokenData = byModel.map(m => m.tokens);
+            const requestData = byModel.map(m => m.requests);
+            
+            // Generate colors
+            const colors = [
+                '#667eea', '#764ba2', '#f093fb', '#4facfe',
+                '#43e97b', '#fa709a', '#30cfd0', '#a8edea'
+            ];
+            
+            if (modelChart) {
+                modelChart.data.labels = labels;
+                modelChart.data.datasets[0].data = tokenData;
+                modelChart.update();
+            } else {
+                modelChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Tokens',
+                            data: tokenData,
+                            backgroundColor: colors,
+                            borderColor: colors.map(c => c),
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function(context) {
+                                        const idx = context.dataIndex;
+                                        return 'Requests: ' + formatNumber(requestData[idx]);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Tokens'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return formatNumber(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Handle time range selection
+        document.getElementById('timeRange').addEventListener('change', function() {
+            const isCustom = this.value === 'custom';
+            document.getElementById('customFromGroup').style.display = isCustom ? 'flex' : 'none';
+            document.getElementById('customToGroup').style.display = isCustom ? 'flex' : 'none';
+            
+            if (!isCustom) {
+                loadMetrics();
+            }
+        });
+        
+        // Start auto-refresh
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(loadMetrics, 30000); // 30 seconds
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMetrics();
+            startAutoRefresh();
+        });
+    </script>
+</body>
+</html>
+
