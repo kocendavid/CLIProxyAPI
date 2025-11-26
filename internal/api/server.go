@@ -262,6 +262,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 		logDir = filepath.Join(base, "logs")
 	}
 	s.mgmt.SetLogDirectory(logDir)
+	s.mgmt.SetJSONStore(usage.GetJSONStore())
 	s.localPassword = optionState.localPassword
 
 	// Setup routes
@@ -558,10 +559,14 @@ func (s *Server) registerManagementRoutes() {
 		mgmt.POST("/iflow-auth-url", s.mgmt.RequestIFlowCookieToken)
 		mgmt.GET("/get-auth-status", s.mgmt.GetAuthStatus)
 
-		// QuantumSpring metrics endpoints
+		// QuantumSpring metrics endpoints (API only; UI is registered separately without auth middleware)
 		mgmt.GET("/qs/health", s.mgmt.GetQSHealth)
 		mgmt.GET("/qs/metrics", s.mgmt.GetQSMetrics)
 	}
+
+	// QuantumSpring metrics dashboard UI (no management key required for HTML shell;
+	// JavaScript inside the page prompts for key and calls the protected API endpoints).
+	s.engine.GET("/v0/management/qs/metrics/ui", s.mgmt.GetQSMetricsUI)
 }
 
 func (s *Server) managementAvailabilityMiddleware() gin.HandlerFunc {

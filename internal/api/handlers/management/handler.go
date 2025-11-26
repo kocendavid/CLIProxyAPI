@@ -160,7 +160,7 @@ func (h *Handler) Middleware() gin.HandlerFunc {
 			return
 		}
 
-		// Accept either Authorization: Bearer <key> or X-Management-Key
+		// Accept either Authorization: Bearer <key>, X-Management-Key, or ?key=<value>
 		var provided string
 		if ah := c.GetHeader("Authorization"); ah != "" {
 			parts := strings.SplitN(ah, " ", 2)
@@ -172,6 +172,11 @@ func (h *Handler) Middleware() gin.HandlerFunc {
 		}
 		if provided == "" {
 			provided = c.GetHeader("X-Management-Key")
+		}
+		if provided == "" {
+			// Fallback to query parameter for convenience in browser-based access:
+			// /v0/management/.../ui?key=SECRET
+			provided = strings.TrimSpace(c.Query("key"))
 		}
 
 		if provided == "" {
