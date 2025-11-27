@@ -32,6 +32,13 @@
             box-shadow: 9px 9px 16px rgba(163, 177, 198, 0.6),
                         -9px -9px 16px rgba(255, 255, 255, 0.5);
             margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-content {
+            flex: 1;
         }
         
         h1 {
@@ -190,6 +197,10 @@
                         inset -4px -4px 8px rgba(255, 255, 255, 0.5);
         }
         
+        button.logout-btn {
+            color: #e53e3e;
+        }
+        
         .status {
             text-align: center;
             color: #2563eb;
@@ -233,8 +244,11 @@
 <body>
     <div class="container">
         <header>
-            <h1>Usage Metrics Dashboard</h1>
-            <p class="subtitle">Real-time monitoring of API usage and token consumption</p>
+            <div class="header-content">
+                <h1>Usage Metrics Dashboard</h1>
+                <p class="subtitle">Real-time monitoring of API usage and token consumption</p>
+            </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </header>
         
         <div class="error" id="error"></div>
@@ -377,6 +391,16 @@
                 });
                 
                 if (!response.ok) {
+                    // If unauthorized/forbidden, clear stored key and re-prompt
+                    if (response.status === 401 || response.status === 403) {
+                        sessionStorage.removeItem('managementKey');
+                        const newKey = prompt('Invalid management key. Please enter a valid key:');
+                        if (newKey) {
+                            sessionStorage.setItem('managementKey', newKey);
+                            loadMetrics();
+                        }
+                        return;
+                    }
                     const error = await response.json();
                     throw new Error(error.error || 'Failed to load metrics');
                 }
@@ -581,6 +605,40 @@
                 clearInterval(autoRefreshInterval);
             }
             autoRefreshInterval = setInterval(loadMetrics, 30000); // 30 seconds
+        }
+        
+        // Logout - clear key, reset dashboard, and re-prompt
+        function logout() {
+            sessionStorage.removeItem('managementKey');
+            
+            // Clear key from URL if present
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('key')) {
+                params.delete('key');
+                const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+                window.history.replaceState({}, '', newUrl);
+            }
+            
+            // Clear KPIs
+            document.getElementById('totalRequests').textContent = '-';
+            document.getElementById('totalTokens').textContent = '-';
+            document.getElementById('avgTokens').textContent = '-';
+            
+            // Clear charts
+            if (timeseriesChart) {
+                timeseriesChart.destroy();
+                timeseriesChart = null;
+            }
+            if (modelChart) {
+                modelChart.destroy();
+                modelChart = null;
+            }
+            
+            // Reset status
+            document.getElementById('status').textContent = 'Last updated: Never';
+            
+            // Re-prompt for key
+            loadMetrics();
         }
         
         // Initialize
