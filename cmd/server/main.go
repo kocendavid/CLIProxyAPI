@@ -66,9 +66,7 @@ func main() {
 	var vertexImport string
 	var configPath string
 	var password string
-	var testPhase1 bool
-	var testPeriodic bool
-	var testPhase2 bool
+	var test bool
 
 	// Define command-line flags for different operation modes.
 	flag.BoolVar(&login, "login", false, "Login Google Account")
@@ -83,9 +81,7 @@ func main() {
 	flag.StringVar(&configPath, "config", DefaultConfigPath, "Configure File Path")
 	flag.StringVar(&vertexImport, "vertex-import", "", "Import Vertex service account key JSON file")
 	flag.StringVar(&password, "password", "", "")
-	flag.BoolVar(&testPhase1, "test-phase1", false, "Run Phase 1 test (JSON store validation)")
-	flag.BoolVar(&testPeriodic, "test-periodic", false, "Run periodic flush test (takes 31 seconds)")
-	flag.BoolVar(&testPhase2, "test-phase2", false, "Run Phase 2 test (persistence integration)")
+	flag.BoolVar(&test, "test", false, "Run comprehensive usage tracking test")
 
 	flag.CommandLine.Usage = func() {
 		out := flag.CommandLine.Output()
@@ -461,22 +457,10 @@ func main() {
 
 	// Handle different command modes based on the provided flags.
 
-	if testPhase1 {
-		// Run Phase 1 test: JSON store validation
-		if err := usage.TestPhase1JSONStore(); err != nil {
-			log.Fatalf("Phase 1 test failed: %v", err)
-		}
-		return
-	} else if testPeriodic {
-		// Run periodic flush test
-		if err := usage.TestPeriodicFlush(); err != nil {
-			log.Fatalf("Periodic flush test failed: %v", err)
-		}
-		return
-	} else if testPhase2 {
-		// Run Phase 2 test: persistence integration
-		if err := usage.TestPhase2Persistence(); err != nil {
-			log.Fatalf("Phase 2 test failed: %v", err)
+	if test {
+		// Run comprehensive usage tracking test
+		if err := usage.TestComprehensiveUsageTracking(); err != nil {
+			log.Fatalf("Comprehensive test failed: %v", err)
 		}
 		return
 	} else if vertexImport != "" {

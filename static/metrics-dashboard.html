@@ -304,10 +304,26 @@
         let modelChart = null;
         let autoRefreshInterval = null;
         
-        // Get management key from URL or prompt
+        // Get management key from URL, sessionStorage, or prompt
         function getManagementKey() {
             const params = new URLSearchParams(window.location.search);
-            return params.get('key') || prompt('Enter management key:');
+            const urlKey = params.get('key');
+            
+            if (urlKey) {
+                sessionStorage.setItem('managementKey', urlKey);
+                return urlKey;
+            }
+            
+            const storedKey = sessionStorage.getItem('managementKey');
+            if (storedKey) {
+                return storedKey;
+            }
+            
+            const promptedKey = prompt('Enter management key:');
+            if (promptedKey) {
+                sessionStorage.setItem('managementKey', promptedKey);
+            }
+            return promptedKey;
         }
         
         // Format number with commas
